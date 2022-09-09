@@ -36,10 +36,10 @@ import math
 
 impath = "C:\\Users\\jevans\\Documents\\GitHub\\leaf_temperature_thermometer\\images"
 allimnames=os.listdir(impath)
-i=6
+i=9
 imname=allimnames[i]
 
-minsize=750
+minsize=1000
 
 img = Image.open(os.path.join(impath,imname))
 img=np.array(img)
@@ -56,8 +56,6 @@ threshim=sobel(threshim)
 
 threshim=ndimage.binary_fill_holes(threshim)
 
-
-
 label_image = label(threshim)
 
 allregions=regionprops(label_image,img)
@@ -70,13 +68,36 @@ for i in range(len(allregions)):
     allresults.update({region.label:{"bbox":region.bbox,"centroid":region.centroid,"area":region.area,"intensity_mean":region.intensity_mean}})
 
 
+ally=[allresults[x]["centroid"][1] for x in allresults]
+hist, bins = np.histogram(ally, bins=6)
+indices = np.digitize(ally, bins)
+indices[indices>6]=6
 
+for i in range(len(indices)):
+    x=list(allresults.keys())[i]
+    allresults[x]["row"]=indices[i]
     
+xrow= {x:(allresults[x]["centroid"][0],allresults[x]["row"]) for x in allresults}
+xroworder=[np.argsort([xrow[x][0] for x in xrow if xrow[x][1]==y]) for y in np.sort(list(set(indices)))]
+
+xrowid=[[x for x in xrow if xrow[x][1]==y] for y in np.sort(list(set(indices)))]
+
+xroworder=[item for sublist in xroworder for item in sublist]
+xrowid=[item for sublist in xrowid for item in sublist]
+
+for i in range(len(xrowid)):
+    currid=xrowid[i]
+    currcol=xroworder[i]
+    allresults[currid]["col"]=currcol
+    
+
         
 fig, ax = plt.subplots(figsize=(12,12))
 ax.imshow(threshim, cmap=plt.cm.gray)
 
-for props in allregions:
+for i in range(len(allresults)):
+    props=allregions[i]
+    currkey=list(allresults.keys())[i]
     y0, x0 = props.centroid
     #orientation = props.orientation
     #x1 = x0 + math.cos(orientation) * 0.5 * props.axis_minor_length
@@ -84,7 +105,8 @@ for props in allregions:
     #x2 = x0 - math.sin(orientation) * 0.5 * props.axis_major_length
     #y2 = y0 - math.cos(orientation) * 0.5 * props.axis_major_length
     
-    ax.text(y0, x0,color=)
+    ax.text(x0, y0,str(allresults[currkey]["col"])+","+str(allresults[currkey]["row"]),color='r')
+    ax.text(x0, y0+10,str(6*allresults[currkey]["col"]+allresults[currkey]["row"]),color='r')
 
     #ax.plot((x0, x1), (y0, y1), '-r', linewidth=2.5)
     #ax.plot((x0, x2), (y0, y2), '-r', linewidth=2.5)
